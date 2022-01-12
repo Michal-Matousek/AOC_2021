@@ -1,0 +1,72 @@
+module Main where
+
+import System.IO
+import Data.List.Split
+import Data.List
+import Data.Array
+import Data.Ix
+import Data.Char
+import Data.Array.MArray
+import Debug.Trace
+
+
+polymerize :: Int -> [[String]] -> String -> String
+polymerize 0 rules poly = poly
+polymerize i rules poly = polymerize (i-1) rules nextPoly
+    where nextPoly = polyStep rules poly
+
+polyStep :: [[String]] -> String -> String
+polyStep rules (x:[]) = x:[]
+polyStep rules (a:b:px) = a:insertion:(polyStep rules (b:px))
+    where insertion = head (head [ ins | [match,ins] <- rules, a:(b:[]) == match ])
+
+processPoly :: Int -> [[String]] -> String -> Array Char Int -> Array Char Int
+processPoly i rules [] hst = hst
+processPoly i rules (a:[]) hst=  hst // [ (a, hst!a + 1)]
+processPoly i rules (a:b:px) hst = processPoly i rules (b:px) sumArrays
+    where seg = a:(b:[])
+          segHist = accumArray (+) 0 ('A','Z') ( [ (c,1) | c<-( polymerize i rules seg )] ++ [(b,-1)] )                      
+          sumArrays = trace ("+:" ++ (show (length px))) array ('A','Z') ( [ (i, segHist!i + hst!i)  | i<-['A'..'Z'] ]  )          
+         
+
+main :: IO ()
+main = do 
+    contents <- readFile  "D:\\Source\\AoC_2021\\aoc27\\input.txt"
+
+    let template =  head (lines $ contents)
+        contentRest = tail (tail (lines $ contents))
+        insertionRules = [ splitOn " -> " l  | l <- contentRest ] 
+
+        totalIter = 40
+        preIter = 20
+
+        longPoly = polymerize preIter insertionRules template
+        sz = length longPoly
+
+        zeroArray = accumArray (+) 0 ('A','Z') []
+        charHist = processPoly (totalIter-preIter) insertionRules longPoly zeroArray    
+        charHistNo0 = [ charHist!i | i <- ['A'..'Z'] ,  charHist!i > 0 ]
+
+        charHistMax = maximum charHistNo0
+        charHistMin = minimum charHistNo0
+
+        result =  charHistMax - charHistMin
+
+    
+
+    print "---------------------------------------------"    
+    print sz
+    print result
+    
+
+    
+
+
+    
+
+    
+    
+
+    
+
+    

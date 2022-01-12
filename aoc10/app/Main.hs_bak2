@@ -1,0 +1,68 @@
+-- 3099
+module Main where
+
+import System.IO
+import Data.List.Split
+import Debug.Trace
+
+-- parse input line to segment points
+lineToPoints :: String -> ((Int,Int),(Int,Int))
+lineToPoints str = ( (read x1 , read y1), (read x2, read y2 )) 
+    where parts = words str -- ["x1,y1","->","x2,y2"]
+          [x1,y1] = splitOn "," (head parts) 
+          [x2,y2] = splitOn "," (last parts)
+
+-- get segments and remainin gpoints and calculate danger points
+-- leading segment split to 4 quadrants by (x1,y1), calculate recursively each quadrant
+-- for segment generate all lines that cross the line defined rectangle and calculate danger points
+addSegments :: [((Int,Int),(Int,Int))] -> [(Int,Int)] -> Int
+addSegments [] remainingPoints = countDangerPoints remainingPoints
+addSegments (segment:sx) remainingPoints = countDangerPoints activeZonePoints + inactiveZoneDanger
+    where activeZoneSegments = [ s | s <- sx, True == segInRectangle segment s ]
+          inactiveZoneSegments = [ s | s <- sx, False == segInRectangle segment s ]
+          (pA,pB) = segment          
+          
+          allPoints = remainingPoints ++ (concat [ segToPoints s | s <- segment:activeZoneSegments ])
+          activeZonePoints = [ p | p <- allPoints, True == pointInRect segment p ]
+          inactiveZonePoints = [ p | p <- allPoints, False == pointInRect segment p ]         
+
+          inactiveZoneDanger = addSegments inactiveZoneSegments inactiveZonePoints
+
+pointInRect :: ((Int,Int),(Int,Int)) -> (Int,Int) -> Bool
+pointInRect ((x1,y1), (x2,y2)) (x,y) = if x<=maxX && x>=minX && y<=maxY && y>=minY then True else False
+    where (maxX, maxY) = (max x1 x2, max y1 y2)
+          (minX, minY) = (min x1 x2, min y1 y2)
+
+segInRectangle :: ((Int,Int),(Int,Int)) -> ((Int,Int),(Int,Int)) -> Bool
+segInRectangle ((rx1,ry1), (rx2,ry2)) ((sx1,sy1), (sx2,sy2)) = if rMin <= sMax && rMax >= sMin then True else False
+    where sMax = (max sx1 sx2, max sy1 sy2)
+          sMin = (min sx1 sx2, min sy1 sy2)
+          rMax = (max rx1 rx2, max ry1 ry2)
+          rMin = (min rx1 rx2, min ry1 ry2)
+
+-- from line segment provide list of points
+segToPoints :: ((Int,Int),(Int,Int)) -> [(Int,Int)] 
+segToPoints ((x1,y1),(x2,y2)) = segPoints
+    where segPoints = [ ( x1+i*dx , y1+i*dy ) | i<- [0..stepsCount] ]
+          dx = if x2-x1 == 0 then 0 else div (x2-x1) (abs (x2-x1))
+          dy = if y2-y1 == 0 then 0 else div (y2-y1) (abs (y2-y1)) 
+          stepsCount = max (abs (x2-x1)) (abs (y2-y1))
+
+-- from point list calculate dange points
+countDangerPoints :: [(Int,Int)] -> Int 
+countDangerPoints [] = 0
+countDangerPoints (point:xs) = rest + (if samePoints >= 1 then 1 else 0)
+    where strippedList = [ x | x<-xs, x /= point]
+          samePoints = sum [1 | x<-xs, x == point]
+          rest = countDangerPoints strippedList
+
+main :: IO ()
+main = do 
+    contents <- readFile  "D:\\Source\\AoC_2021\\aoc09\\input.txt"    
+
+    let inputList = lines $ contents         
+        lineSegments =  map (lineToPoints) inputList
+        ortogonalSegments = [ ((x1,y1),(x2,y2)) | ((x1,y1),(x2,y2)) <- lineSegments, x1 == x2 || y1 == y2]        
+        dangerPoints = addSegments ortogonalSegments []
+        
+    print dangerPoints

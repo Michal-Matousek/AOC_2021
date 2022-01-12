@@ -1,0 +1,47 @@
+-- 3099
+module Main where
+
+import System.IO
+import Data.List.Split
+import Debug.Trace
+
+points2Vec (x1,y1) (x2,y2) = (x2-x1,y2-y1)
+vNormal (x1,y1) = (y1,-x1)
+vvDot (x1,y1) (x2,y2) = (x1*x2 + y1*y2)
+vvPlus (x1,y1) (x2,y2) = (x1+x2,y1+y2)
+svMul s (x1,y1) = (round  s*x1, round s*y1)
+
+lineToPoints :: String -> ((Int,Int),(Int,Int))
+lineToPoints str = ( (read x1 , read y1), (read x2, read y2 )) 
+    where parts = words str -- ["x1,y1","->","x2,y2"]
+          [x1,y1] = splitOn "," (head parts) 
+          [x2,y2] = splitOn "," (last parts)
+
+segmentIntersections :: ((Int,Int),(Int,Int)) -> ((Int,Int),(Int,Int)) -> Int
+-- not identical segments assumed
+segmentIntersections (pA,pB) (pC,pD) 
+    | distAB == 0 = 0
+    | distAB /= 0 = if k >= 0 && k<=1 && l>=0 && l<=1 then 1 else 0
+    where vAB = points2Vec pA pB
+          vCD = points2Vec pC pD
+          normCD = vNormal vCD
+          distAB = vvDot vAB normCD
+          distCA = vvDot (points2Vec pA pC) normCD
+          k = fromIntegral (distCA) / fromIntegral(distAB) :: Double
+          pIntE = vvPlus pA (svMul k vAB) -- intersection point E
+          distCD = trace ("Intersection:" ++ show pIntE) (vvDot vCD vCD)
+          distCE = vvDot vCD (points2Vec pC pIntE)
+          l = fromIntegral(distCE) / fromIntegral(distCD) :: Double
+          
+main :: IO ()
+main = do 
+    contents <- readFile  "D:\\Source\\AoC_2021\\aoc09\\input.txt"    
+
+    let inputList = lines $ contents         
+        lineSegments =  map (lineToPoints) inputList
+        ortogonalSegments = [ ((x1,y1),(x2,y2)) | ((x1,y1),(x2,y2)) <- lineSegments, x1 == x2 || y1 == y2]
+        intesections = 0 --sum [ segmentIntersections l1 l2 | l1 <- ortogonalSegments, l2 <- ortogonalSegments, l1 /= l2 && l1<l2 ]
+        test = segmentIntersections ((0,0),(10,0)) ((3,15),(3,-10))
+
+    print test
+    print intesections
